@@ -1,6 +1,7 @@
 require 'set'
 require 'pp'
 require 'colorize'
+require 'yaml'
 
 class Board
   attr_accessor :board
@@ -22,9 +23,6 @@ class Board
 
 end
 
-
-
-
 class Game
   def initialize
     @round = 0
@@ -40,6 +38,35 @@ class Game
     start_game
   end
 
+  def save_game
+    game_state = { selected_word: @selected_word,
+                  selected_word_chars: @selected_word_chars,
+                  round: @round,
+                  guesses: @guesses,
+                  characters: @characters,
+                  incorrect_guesses: @incorrect_guesses,
+                  current_guess: @current_guess,
+                  board: @board.board
+                }
+
+    File.open("./hangman.yml", 'w') { |f| f.write(game_state.to_yaml) }
+    exit
+  end
+
+  def load_game
+      yaml = YAML::load_file("./hangman.yml")
+      @round = yaml[:round]
+      @guesses = yaml[:guesses]
+      @characters = yaml[:characters]
+      @incorrect_guesses = yaml[:incorrect_guesses]
+      @selected_word = yaml[:selected_word]
+      @selected_word_chars =yaml[:selected_word_chars]
+      @current_guess = yaml[:current_guess]
+      @board.board = yaml[:board]
+  end
+    
+      
+
   def random_word
     word_arr = []
     words = File.open("google-10000-english-no-swears.txt", "r")
@@ -53,13 +80,26 @@ class Game
   end
 
   def make_guess
-    puts "Enter a character"
+    puts "Enter an alphabetical character (or save/load)"
     input = gets.chomp
     input = input.downcase.strip
       if @characters.include?(input) && input.length == 1
         # puts "Allowed"
         @guesses << input
         @current_guess = input
+      elsif input == "save"
+        puts "Saving and exiting...".colorize(:yellow)
+        save_game
+      elsif input == "load"
+        puts "Loading game...".colorize(:yellow)
+        begin
+          load_game
+          puts "Game loaded successfully!".colorize(:green)
+          start_game
+        rescue
+          puts "Could not load game, starting a new one...".colorize(:red)
+          start_game
+        end
       else
         puts "Please enter one alphabetical character (No numbers or special characters)"
         make_guess
@@ -115,6 +155,9 @@ class Game
     sleep(1)
     puts "You will be shown which characters are in the word and which aren't"
     sleep(1)
+    puts "You can save and exit at any time by entering 'save' instead of a character"
+    sleep(1)
+    puts "To load a game, enter 'load' instead of a character"
     @board.print_board
     while @round < 15
       puts "It's round #{@round + 1}".colorize(:light_blue)
